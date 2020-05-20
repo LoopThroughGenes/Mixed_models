@@ -1,0 +1,123 @@
+
+
+library(tidyverse)
+library(FSA)   
+library(lattice) 
+library(lme4)
+library(ggplot2)
+library(multicom)
+
+library("car")
+require(car)
+require(MASS)
+
+## mock data coming soon
+
+TBP_lvl <- read.csv(file = "Prabin_ratios.csv", sep = ";") %>% rename(value=ratio)
+## GENES tested in qPCR. Differences between plates were detected.
+## Each gene specifies in what plate it was placed during qPCR
+
+gene_list <- unique(TBP_lvl %>% select(gene)) %>% filter(gene!="TBP" & gene!="GUSB")
+
+
+
+unique_genes <- c(unique(TBP_lvl %>% select(gene)) %>% filter(gene!="TBP" & gene!="GUSB"))
+
+
+
+
+bartlett.test(value ~ cellType, data=TBP_lvl %>% filter(gene == "GCN2"))
+bartlett.test(value ~ cellType, data=TBP_lvl %>% filter(gene == "GENE1"))
+
+
+
+
+gene_exp <- TBP_lvl %>% filter(gene == "GENE1")
+qqnorm(gene_exp$value, pch = 1, frame = FALSE)
+qqline(gene_exp$value, col = "steelblue", lwd = 2)
+
+
+
+GCN2=TBP_lvl %>% filter(gene == "GCN2")
+GENE1=TBP_lvl %>% filter(gene == "GENE1")
+GENE2=TBP_lvl %>% filter(gene == "GENE2")
+GENE3=TBP_lvl %>% filter(gene == "GENE3")
+
+
+
+#Example in GCN2
+
+
+
+GCN2$value.t <- GCN2$value + 1
+PQL <- glmmPQL(value.t ~ cellType, ~1 | plate, family = gaussian(link = "log"),
+               data = GCN2, verbose = FALSE)
+print(summary(PQL))
+print(Anova(PQL))
+
+
+
+lmm <- lmer(value.t ~ cellType + (1 | plate), data = GCN2,
+            REML = FALSE)
+print(lmm)
+print(Anova(lmm))
+
+all_sets <- list(gene1, gene2, gene3)
+
+#Making all plots for checking if distribution fits the normal or the lognormal distribution
+
+i = 0
+for (dataset in all_sets){
+  i = i +1
+  dataset$value.t <- dataset$value + 1
+  name <- as.character(dataset[1,1])
+  jpeg(file=paste(name, "_norm", ".jpeg"))
+  qqp(dataset$value.t, "norm", main = paste(name))
+  dev.off()
+  
+  jpeg(file=paste(name, "_lnorm", ".jpeg"))
+  qqp(dataset$value.t, "lnorm", main = paste(name)) # lnorm means lognormal
+  dev.off()
+  
+  
+}
+
+
+
+#after lookig at plots
+
+
+#Did LMer by Maximum Likelihood in all genes
+
+i = 0
+for (dataset in all_sets){
+  i = i +1
+  print(i)
+  name <- as.character(dataset[1,1])
+  print(name)
+  print("normal")
+  dataset$value.t <- dataset$value + 1
+  lmm <- lmer(value.t ~ cellType + (1 | plate), data = dataset,
+              REML = FALSE)
+  print(lmm)
+  print(Anova(lmm)) #Wald test, how confident of the effect of Cell type on value
+  #print(summary(glht(lmm, linfct=mcp(cellType="Tukey"))))
+}
+
+all_sets <- list(gene1, gene2, gene3)
+
+
+i = 0
+for (dataset in all_sets_2){
+  i = i +1
+  print(i)
+  name <- as.character(dataset[1,1])
+  print(name)
+  print("normal")
+  dataset$value.t <- dataset$value + 1
+  lmm <- lmer(value.t ~ cellType + (1 | plate), data = dataset,
+              REML = FALSE)
+  print(lmm)
+  print(Anova(lmm)) #Wald test, how confident of the effect of Cell type on value
+  #print(summary(glht(lmm, linfct=mcp(cellType="Tukey"))))
+}
